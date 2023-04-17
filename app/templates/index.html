@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instance Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf-8">
+        var socket = io();
+        async function callAPI(endpoint) {
+            socket.emit(endpoint, 'do: ' + endpoint); 
+        }
+        $(document).ready(function() {
+        socket.on('my_response', function(msg, cb) {
+            var logDiv = document.getElementById("log");
+            $('#log').append('<br><span class="prompt">➜  </span>' + $('<div/>').text(msg).html());
+            if (cb)
+                cb();
+            logDiv.scrollTop = logDiv.scrollHeight;
+        });
+
+        socket.on('connect', function() {
+            socket.emit('connect_me', 'I\'m connected!');
+        });
+        var input = document.getElementById("input");
+        input.addEventListener("keyup", function(event) {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            var command = input.value;
+            input.value = "";
+            socket.emit('terminal', command); 
+        }
+});
+        
+    });
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          }
+          
+          h1 {
+            margin-bottom: 20px;
+          }
+          
+          button {
+            background-color: #008CBA;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 150px;
+            margin-bottom: 10px;
+          }
+          
+          button:hover {
+            background-color: #00587A;
+          }
+          
+          #terminal {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
+          
+          #log {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            flex-grow: 1;
+            height: 400px;
+            overflow: auto;
+            padding: 10px;
+            background-color: #002B36;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+          }
+          
+          #input-container {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #002B36;
+          }
+          
+          #input-container .prompt {
+            color: #2aa198;
+          }
+          
+          #input {
+            width: 100%;
+            border: none;
+            background-color: transparent;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 18px;
+            caret-color: #fff;
+            border-color: transparent;
+            outline: none;
+          }
+          
+          #input:focus {
+            border: none;
+          }
+        }
+        
+    </style>
+</head>
+<body>
+    <h1>Instance Manager</h1>
+    
+    <button onclick="callAPI('get_instance')">Get Instance</button>
+    <button onclick="callAPI('delete_instance')">Delete Instance</button>
+    <button onclick="callAPI('create_instance')">Create Instance</button>
+    <button onclick="callAPI('connect_ssh')">Connect SSH</button>
+    <button onclick="location.href='{{ url_for('routers.logout') }}'">Logout</button>
+    <h2>Terminal:</h2>
+    <div id="terminal">
+        <div id="log"></div>
+        <div id="input-container">
+            <span class="prompt">➜  </span>
+            <input id="input" type="text" autocomplete="off">
+        </div>
+    </div>
+</body>
+</html>

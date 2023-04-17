@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        form {
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+            text-align: left;
+        }
+        label {
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        input[type="text"],
+        input[type="password"] {
+            padding: 5px;
+            margin-bottom: 20px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button[type="submit"] {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button[type="submit"]:hover {
+            background-color: #3e8e41;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login</h1>
+    <form action="/login" method="post">
+        <label for="key">Vultr Key:</label>
+        <br>
+        <input type="text" name="key" required>
+        <br>
+        <label for="password">Password:</label>
+        <br>
+        <input id = "password" type="password" name="password" required>
+        <input type="checkbox" onclick="togglePasswordVisibility()"> Show Password
+        <br>
+        <button type="submit">Login</button>
+    </form>
+</body>
+<script>
+    function togglePasswordVisibility() {
+      var x = document.getElementById("password");
+      if (x.type === "password") {
+        x.type = "text";
+      } else {
+        x.type = "password";
+      }
+    }
+    </script>
+</html>
