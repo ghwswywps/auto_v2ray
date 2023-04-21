@@ -5,7 +5,7 @@ from flask_socketio import emit, join_room, leave_room, \
     close_room
 from threading import Thread
 from app import socketio
-from .socket_log import log_queue, with_logging
+from .socket_log import get_socket_log,log_queue, with_logging
 from .ssh_remote_utils import get_ssh, cmd
 from .ali_ddns import change_domain_record
 import re, requests, time, json, requests, yaml
@@ -41,11 +41,11 @@ def remove_ansi_codes(text):
 @socketio.event
 @with_logging
 def get_instance(msg, logger = None):
-    def get_instance_async():
-        response = requests.get(f"{BASE_URL}/instances", headers=headers)
-        instances = response.json()["instances"]
-        logger.log("result:" + json.dumps(instances))
-    Thread(target=get_instance_async).start()
+    # def get_instance_async():
+    response = requests.get(f"{BASE_URL}/instances", headers=headers)
+    instances = response.json()["instances"]
+    logger.log("result:" + json.dumps(instances))
+    # Thread(target=get_instance_async).start()
     
 @socketio.event
 def connect_me(msg):
@@ -138,7 +138,7 @@ def infect_me(msg, logger = None):
     if not channel:
         logger.log('plz connect_ssh first!')
     else:
-        channel.send("pip install flask flask-cors flask-socketio paramiko && git clone https://github.com/ghwswywps/auto_v2ray.git && cd auto_v2ray && python3 run.py" + "\n")
+        channel.send("pip install flask flask-cors flask-socketio paramiko json5 && git clone https://github.com/ghwswywps/auto_v2ray.git" + "\n")
     return 'ok'
 
 @socketio.event
@@ -150,22 +150,19 @@ def install_v2ray(msg, logger = None):
         logger.log('here is no connection yet!')
         return
     
-    def install_v2ray():
-        logger.log('开始安装并配置v2ray服务端')
-        channel.send('echo -e "1\n2\n10924\n\n\n\n\n" | bash <(curl -s -L https://git.io/v2ray.sh)\n')
-        if key == API_KEY:
-            channel.send('''sed -i 's/"id": "[^"]\{36\}"/"id": "''' + USER_ID + '''"/' /etc/v2ray/config.json\n''')
-        logger.log('配置完成，重启v2ray服务端')   
-        channel.send('v2ray restart\n')
-
-        logger.log('show info:')
-        channel.send('v2ray url\n')
-        if key == API_KEY:
-            response = requests.get(f"{BASE_URL}/instances", headers=headers)
-            host = response.json()["instances"][0]['main_ip']
-            change_domain_record(host)
-        logger.log('安装完成')
-    Thread(target=install_v2ray).start()
+    logger.log('开始安装并配置v2ray服务端')
+    channel.send('echo -e "1\n2\n10924\n\n\n\n\n" | bash <(curl -s -L https://git.io/v2ray.sh)\n')
+    if key == API_KEY:
+        channel.send('''sed -i 's/"id": "[^"]\{36\}"/"id": "''' + USER_ID + '''"/' /etc/v2ray/config.json\n''')
+    logger.log('配置完成，重启v2ray服务端')   
+    channel.send('v2ray restart\n')
+    logger.log('show info:')
+    channel.send('v2ray url\n')
+    if key == API_KEY:
+        response = requests.get(f"{BASE_URL}/instances", headers=headers)
+        host = response.json()["instances"][0]['main_ip']
+        change_domain_record(host)
+    logger.log('安装完成')
 
 @socketio.event
 @with_logging
@@ -181,55 +178,54 @@ def install_warp(msg, logger = None):
 @with_logging
 def create_instance(msg, logger = None):
     password = session['password']
-    channel = channel_map.get(request.sid)
+    sid = request.sid
+    channel = channel_map.get(sid)
     if channel:
         channel.close()
-        channel_map.pop(request.sid)
-    ssh = ssh_map.get(request.sid)
+        channel_map.pop(sid)
+    ssh = ssh_map.get(sid)
     if ssh:
         ssh.close()
-        ssh_map.pop(request.sid)
+        ssh_map.pop(sid)
     
-    def create_instance_async(sid):
-        logger.log('查询并删除已有容器')
-        response = requests.get(f"{BASE_URL}/instances", headers=headers)
-        instances = response.json()["instances"]
-        # 删除所有 instances
-        for instance in instances:
-            requests.delete(f"{BASE_URL}/instances/{instance['id']}", headers=headers)
-        # logger.log("删除完成")
-        # 创建一个新的 instance
+    logger.log('查询并删除已有容器')
+    response = requests.get(f"{BASE_URL}/instances", headers=headers)
+    instances = response.json()["instances"]
+    # 删除所有 instances
+    for instance in instances:
+        requests.delete(f"{BASE_URL}/instances/{instance['id']}", headers=headers)
+    # logger.log("删除完成")
+    # 创建一个新的 instance
+    
+    logger.log('删除容器完成')
+    response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
+    passwd = response.json()["instance"]['default_password']
+    logger.log("初始化容器中,此过程大约需要30秒...")
+    time.sleep(30)
+    response = requests.get(f"{BASE_URL}/instances", headers=headers)
+    host = response.json()["instances"][0]['main_ip']
+    logger.log(f"初始化容器成功，初始密码：{passwd}，地址：{host}")
+    logger.log('开始尝试登录SSH，此过程大约需要20秒')
+    ssh = get_ssh(host, passwd, logger)
+    logger.log('登录成功，开始修改默认密码')
+    cmd(ssh,'echo -e "' + password + '\n' + password + '" | passwd')
+    time.sleep(2)
+    logger.log('修改成功,新密码：' + password)
+    ssh = get_ssh(host, password, logger, max_retries = 1)
+    ssh_map[sid] = ssh
+    channel_map[sid] =  ssh.invoke_shell()
+    channel = channel_map[sid]
+    logger.log('开始初始化网络，关闭防火墙')
+    time.sleep(1)
+    channel.send('ufw disable\n')
+    logger.log('防火墙已关闭，服务启动完成')
         
-        logger.log('删除容器完成')
-        response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
-        passwd = response.json()["instance"]['default_password']
-        logger.log("初始化容器中,此过程大约需要30秒...")
-        time.sleep(30)
-        response = requests.get(f"{BASE_URL}/instances", headers=headers)
-        host = response.json()["instances"][0]['main_ip']
-        logger.log(f"初始化容器成功，初始密码：{passwd}，地址：{host}")
-        logger.log('开始尝试登录SSH，此过程大约需要20秒')
-        ssh = get_ssh(host, passwd, logger)
-        logger.log('登录成功，开始修改默认密码')
-        cmd(ssh,'echo -e "' + password + '\n' + password + '" | passwd')
-        time.sleep(2)
-        logger.log('修改成功,新密码：' + password)
-        ssh = get_ssh(host, password, logger, max_retries = 1)
-        ssh_map[sid] = ssh
-        channel_map[sid] =  ssh.invoke_shell()
-        channel = channel_map[sid]
-        logger.log('开始初始化网络，关闭防火墙')
-        time.sleep(1)
-        channel.send('ufw disable\n')
-        logger.log('防火墙已关闭，服务启动完成')
-        
-    Thread(target=create_instance_async, args=(request.sid,)).start()
     return 'ok'
 
     
 @socketio.event
-@with_logging
-def terminal(msg, logger = None):
+def terminal(msg):
+    logger = get_socket_log()
     channel = channel_map.get(request.sid)
     if not channel:
         logger.log('here is no connection yet!')
