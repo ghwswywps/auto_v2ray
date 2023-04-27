@@ -187,38 +187,40 @@ def create_instance(msg, logger = None):
     if ssh:
         ssh.close()
         ssh_map.pop(sid)
+    def create_instance_async(sid):
+        logger.log('查询并删除已有容器')
+        response = requests.get(f"{BASE_URL}/instances", headers=headers)
+        instances = response.json()["instances"]
+        # 删除所有 instances
+        for instance in instances:
+            requests.delete(f"{BASE_URL}/instances/{instance['id']}", headers=headers)
+        # logger.log("删除完成")
+        # 创建一个新的 instance
+
+        logger.log('删除容器完成')
+        response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
+        passwd = response.json()["instance"]['default_password']
+        logger.log("初始化容器中,此过程大约需要30秒...")
+        time.sleep(30)
+        response = requests.get(f"{BASE_URL}/instances", headers=headers)
+        host = response.json()["instances"][0]['main_ip']
+        logger.log(f"初始化容器成功，初始密码：{passwd}，地址：{host}")
+        logger.log('开始尝试登录SSH，此过程大约需要20秒')
+        ssh = get_ssh(host, passwd, logger)
+        logger.log('登录成功，开始修改默认密码')
+        cmd(ssh,'echo -e "' + password + '\n' + password + '" | passwd')
+        time.sleep(2)
+        logger.log('修改成功,新密码：' + password)
+        ssh = get_ssh(host, password, logger, max_retries = 1)
+        ssh_map[sid] = ssh
+        channel_map[sid] =  ssh.invoke_shell()
+        channel = channel_map[sid]
+        logger.log('开始初始化网络，关闭防火墙')
+        time.sleep(1)
+        channel.send('ufw disable\n')
+        logger.log('防火墙已关闭，服务启动完成')
     
-    logger.log('查询并删除已有容器')
-    response = requests.get(f"{BASE_URL}/instances", headers=headers)
-    instances = response.json()["instances"]
-    # 删除所有 instances
-    for instance in instances:
-        requests.delete(f"{BASE_URL}/instances/{instance['id']}", headers=headers)
-    # logger.log("删除完成")
-    # 创建一个新的 instance
-    
-    logger.log('删除容器完成')
-    response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
-    passwd = response.json()["instance"]['default_password']
-    logger.log("初始化容器中,此过程大约需要30秒...")
-    time.sleep(30)
-    response = requests.get(f"{BASE_URL}/instances", headers=headers)
-    host = response.json()["instances"][0]['main_ip']
-    logger.log(f"初始化容器成功，初始密码：{passwd}，地址：{host}")
-    logger.log('开始尝试登录SSH，此过程大约需要20秒')
-    ssh = get_ssh(host, passwd, logger)
-    logger.log('登录成功，开始修改默认密码')
-    cmd(ssh,'echo -e "' + password + '\n' + password + '" | passwd')
-    time.sleep(2)
-    logger.log('修改成功,新密码：' + password)
-    ssh = get_ssh(host, password, logger, max_retries = 1)
-    ssh_map[sid] = ssh
-    channel_map[sid] =  ssh.invoke_shell()
-    channel = channel_map[sid]
-    logger.log('开始初始化网络，关闭防火墙')
-    time.sleep(1)
-    channel.send('ufw disable\n')
-    logger.log('防火墙已关闭，服务启动完成')
+    Thread(target=create_instance_async, args=(request.sid,)).start()    
         
     return 'ok'
 
