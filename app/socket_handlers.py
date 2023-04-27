@@ -141,6 +141,18 @@ def infect_me(msg, logger = None):
         channel.send("pip install flask flask-cors flask-socketio paramiko json5 && git clone https://github.com/ghwswywps/auto_v2ray.git" + "\n")
     return 'ok'
 
+ 
+@socketio.event
+@with_logging
+def openmldb_chatgpt(msg, logger = None):
+    channel = channel_map.get(request.sid)
+    if not channel:
+        logger.log('here is no connection yet!')
+    else:
+        channel.send('openmldb-chatgpt\n')
+    return 'ok'
+
+
 @socketio.event
 @with_logging
 def install_v2ray(msg, logger = None):
