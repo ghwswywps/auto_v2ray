@@ -191,7 +191,7 @@ def install_warp(msg, logger = None):
             cmd_with_log(ssh, logger, 'echo -e "y" |warp-cli register')
             cmd_with_log(ssh, logger, 'warp-cli set-mode proxy')
             cmd_with_log(ssh, logger, 'warp-cli connect')
-            cmd_with_log(ssh, logger, 'python3 auto_v2ray/warps_utils.py $$ v2ray restart')
+            cmd_with_log(ssh, logger, 'python3 auto_v2ray/warps_utils.py && v2ray restart')
             logger.log('warp install success!')
 
         Thread(target=install_warp_async).start()    
