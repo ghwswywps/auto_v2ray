@@ -6,9 +6,9 @@ from flask_socketio import emit, join_room, leave_room, \
 from threading import Thread
 from app import socketio
 from .socket_log import get_socket_log,log_queue, with_logging
-from .ssh_remote_utils import get_ssh, cmd
+from .ssh_remote_utils import get_ssh, cmd, cmd_with_log
 from .ali_ddns import change_domain_record
-import re, requests, time, json, requests, yaml
+import re, requests, time, json, yaml
 
 with open('config.yml') as f:
     config = yaml.safe_load(f)
@@ -179,11 +179,23 @@ def install_v2ray(msg, logger = None):
 @socketio.event
 @with_logging
 def install_warp(msg, logger = None):
-    channel = channel_map.get(request.sid)
-    if not channel:
+    ssh = ssh_map.get(request.sid)
+    if not ssh:
         logger.log('plz connect_ssh first!')
     else:
-        channel.send('python3 auto_v2ray/warps_utils.py' + '\n')
+        def install_warp_async():
+            cmd_with_log(ssh, logger, 'curl https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg')
+            cmd_with_log(ssh, logger, 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list')
+            cmd_with_log(ssh, logger, 'sudo apt update')
+            cmd_with_log(ssh, logger, 'sudo apt install cloudflare-warp -y')
+            cmd_with_log(ssh, logger, 'echo -e "y" |warp-cli register')
+            cmd_with_log(ssh, logger, 'warp-cli set-mode proxy')
+            cmd_with_log(ssh, logger, 'warp-cli connect')
+            cmd_with_log(ssh, logger, 'python3 auto_v2ray/warps_utils.py $$ v2ray restart')
+            logger.log('warp install success!')
+
+        Thread(target=install_warp_async).start()    
+        
      
 
 @socketio.event

@@ -3,7 +3,7 @@ import json5
 
 
 
-config_file_path = "/etc/v2ray/config.json"  # 根据实际情况修改
+config_file_path = "/etc/v2ray/config.json"  
 
 
 with open(config_file_path, 'r') as f:

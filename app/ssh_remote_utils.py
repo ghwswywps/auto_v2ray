@@ -22,3 +22,7 @@ def cmd(ssh,cmd):
     stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
     return stdout.read().decode()
 
+def cmd_with_log(ssh, logger , cmd):
+    stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
+    logger.log(stdout.read().decode())
+
