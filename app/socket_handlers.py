@@ -197,6 +197,18 @@ def install_warp(msg, logger = None):
         Thread(target=install_warp_async).start()    
         
      
+# @socketio.event
+# @with_logging
+# def change_passwd(msg, logger = None):
+#     if ssh_map.get(request.sid):
+#         passwd = session['old_password']
+#         ssh = get_ssh(host, passwd, logger)
+        
+#         ssh = ssh_map.get(request.sid)
+#         cmd(ssh,'echo -e "' + password + '\n' + password + '" | passwd')        
+#     else:
+#         logger.log('there is no connection established!')
+
 
 @socketio.event
 @with_logging
@@ -212,20 +224,31 @@ def create_instance(msg, logger = None):
         ssh.close()
         ssh_map.pop(sid)
     def create_instance_async(sid):
+
+        # 创建一个新的 instance ， 先创建再生成避免ip不变
+
+        response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
+        logger.log(print(response.json()))
+        passwd = response.json()["instance"]['default_password']
+        session['old_password'] = passwd
+
+        # 查询并删除老的 instance
         logger.log('查询并删除已有容器')
         response = requests.get(f"{BASE_URL}/instances", headers=headers)
         instances = response.json()["instances"]
-        # 删除所有 instances
+        instances = sorted(instances, key=lambda x: x['date_created'], reverse=True)
+        tempCount = 0
+
+        # 删到只剩最后一台
         for instance in instances:
             requests.delete(f"{BASE_URL}/instances/{instance['id']}", headers=headers)
-        # logger.log("删除完成")
-        # 创建一个新的 instance
-
-        logger.log('删除容器完成')
-        response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
-        passwd = response.json()["instance"]['default_password']
-        logger.log("初始化容器中,此过程大约需要30秒...")
+            tempCount += 1
+            if tempCount >= len(instances):
+                break
+        logger.log("初始化 & 删除旧容器中,此过程大约需要30秒...")
         time.sleep(30)
+        logger.log('删除容器完成')
+
         response = requests.get(f"{BASE_URL}/instances", headers=headers)
         host = response.json()["instances"][0]['main_ip']
         logger.log(f"初始化容器成功，初始密码：{passwd}，地址：{host}")
@@ -233,17 +256,19 @@ def create_instance(msg, logger = None):
         ssh = get_ssh(host, passwd, logger)
         logger.log('登录成功，开始修改默认密码')
         cmd(ssh,'echo -e "' + password + '\n' + password + '" | passwd')
-        time.sleep(2)
+        time.sleep(10)
         logger.log('修改成功,新密码：' + password)
         ssh = get_ssh(host, password, logger, max_retries = 1)
         ssh_map[sid] = ssh
         channel_map[sid] =  ssh.invoke_shell()
         channel = channel_map[sid]
         logger.log('开始初始化网络，关闭防火墙')
-        time.sleep(1)
+        time.sleep(10)
         channel.send('ufw disable\n')
         logger.log('防火墙已关闭，服务启动完成')
-    
+
+
+
     Thread(target=create_instance_async, args=(request.sid,)).start()    
         
     return 'ok'
