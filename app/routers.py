@@ -2,7 +2,13 @@ from flask import Blueprint, render_template, request, session, redirect, url_fo
 
 from functools import wraps
 
+import requests
+import yaml
+
 bp = Blueprint('routers', __name__)
+
+with open('config.yml') as f:
+    config = yaml.safe_load(f)
 
 def login_required(f):
     @wraps(f)
@@ -16,15 +22,17 @@ def login_required(f):
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        password = request.form['password']
         key = request.form['key']
         session['key'] = key
-        session['password'] = password
-        global headers 
-        headers = {
-                "Authorization": f"Bearer {key}",
-            }
-        return redirect(url_for('routers.index'))
+        session['headers'] = {
+            "Authorization": f"Bearer {key}",
+        }
+        response = requests.get(f"{config['vultr']['base_url']}/instances", headers=session['headers'])
+        json_data = response.json()
+        if "instances" in json_data:
+            return redirect(url_for('routers.index'))
+        else:
+            return "key不合法，请查看权限配置"
     return render_template('login.html')
 
 @bp.route('/logout')
