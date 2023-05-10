@@ -23,13 +23,14 @@ def login_required(f):
 def login():
     if request.method == 'POST':
         key = request.form['key']
-        session['key'] = key
-        session['headers'] = {
+        headers = {
             "Authorization": f"Bearer {key}",
         }
-        response = requests.get(f"{config['vultr']['base_url']}/instances", headers=session['headers'])
+        response = requests.get(f"{config['vultr']['base_url']}/instances", headers=headers)
         json_data = response.json()
         if "instances" in json_data:
+            session['key'] = key
+            session['headers'] = headers
             return redirect(url_for('routers.index'))
         else:
             return "key不合法，请查看权限配置"
