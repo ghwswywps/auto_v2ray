@@ -226,7 +226,7 @@ def create_instance(msg, logger = None):
         logger.log('开始尝试登录SSH，此过程大约需要30秒')
         ssh = get_ssh(host, passwd, logger)
         ssh_map[sid] = ssh
-        
+        channel_map[request.sid] =  ssh.invoke_shell()
         cmd(ssh,'echo -e "' + get_password(key, iid) + '\n' + get_password(key, iid) + '" | passwd')
         time.sleep(2)
         logger.log('修改成功,新密码：' + get_password(key, iid))
