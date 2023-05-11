@@ -230,7 +230,8 @@ def create_instance(msg, logger = None):
         response = requests.post(f"{BASE_URL}/instances", headers=headers, json=data)
         logger.log(print(response.json()))
         passwd = response.json()["instance"]['default_password']
-        session['old_password'] = passwd
+
+        print("创建新容器中...")
 
         # 查询并删除老的 instance
         logger.log('查询并删除已有容器')
@@ -238,6 +239,8 @@ def create_instance(msg, logger = None):
         instances = response.json()["instances"]
         instances = sorted(instances, key=lambda x: x['date_created'], reverse=True)
         tempCount = 0
+
+        print("删除旧容器中...")
 
         # 删到只剩最后一台
         for instance in instances:
@@ -248,6 +251,8 @@ def create_instance(msg, logger = None):
         logger.log("初始化 & 删除旧容器中,此过程大约需要30秒...")
         time.sleep(30)
         logger.log('删除容器完成')
+
+        print("初始化容器中")
 
         response = requests.get(f"{BASE_URL}/instances", headers=headers)
         host = response.json()["instances"][0]['main_ip']
