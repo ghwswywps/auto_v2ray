@@ -232,6 +232,7 @@ def create_instance(msg, logger = None):
         passwd = response.json()["instance"]['default_password']
 
         print("创建新容器中...")
+        time.sleep(60)
 
         # 查询并删除老的 instance
         logger.log('查询并删除已有容器')
@@ -239,6 +240,7 @@ def create_instance(msg, logger = None):
         instances = response.json()["instances"]
         instances = sorted(instances, key=lambda x: x['date_created'], reverse=True)
         tempCount = 0
+        # 需要等待到新的机器拿到 ip
 
         print("删除旧容器中...")
 
