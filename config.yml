@@ -1,9 +1,11 @@
 vultr:
   base_url: "https://api.vultr.com/v2"
-  api_key: 
-  user_id: 
+  api_key: "3ACBTG7KUSKRTOW5GLKGFUUEAEOPIE23H6KQ"
+  user_id:
 ali_ddns:
   access_key_id: 
   access_key_secret: 
   domain_name: 
   record_id: 
+
+# B}y4GMpt[%VR2U6)
